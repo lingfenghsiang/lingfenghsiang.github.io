@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
+  <link rel="mask-icon" href="/images/favicon.ico" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://yoursite.com').hostname,
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.7.1',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="Introduction Recently I’ve been working on some kernel job, and debugging the kernel makes me exhausted. I referenced some blogs and tried to make it easier to debug the kernel. Now I can debug the k">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to debug linux kernel as if debugging a userland program in ide (with gdb and vscode)">
+<meta property="og:url" content="http://yoursite.com/2021/08/22/post/index.html">
+<meta property="og:site_name" content="Lingfeng Xiang">
+<meta property="og:description" content="Introduction Recently I’ve been working on some kernel job, and debugging the kernel makes me exhausted. I referenced some blogs and tried to make it easier to debug the kernel. Now I can debug the k">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-08-22T18:58:16.000Z">
+<meta property="article:modified_time" content="2023-07-01T19:42:57.827Z">
+<meta property="article:author" content="Lingfeng Xiang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2021/08/22/post/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>How to debug linux kernel as if debugging a userland program in ide (with gdb and vscode) | Lingfeng Xiang</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Lingfeng Xiang</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">(向凌峰)</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/08/22/post/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Lingfeng Xiang">
+      <meta itemprop="description" content="PhD student at UTA">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Lingfeng Xiang">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          How to debug linux kernel as if debugging a userland program in ide (with gdb and vscode)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-08-22 13:58:16" itemprop="dateCreated datePublished" datetime="2021-08-22T13:58:16-05:00">2021-08-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2023-07-01 14:42:57" itemprop="dateModified" datetime="2023-07-01T14:42:57-05:00">2023-07-01</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="introduction"><a class="markdownIt-Anchor" href="#introduction"></a> Introduction</h1>
+<p>Recently I’ve been working on some kernel job, and debugging the kernel makes me exhausted. I referenced some blogs and tried to make it easier to debug the kernel. Now I can debug the kernel like a userland program with the gui interface of vscode. I’d include the blogs or other materials I referenced as much as I could. If you know the original entry, you may contact me.</p>
+<h1 id="prerequisites"><a class="markdownIt-Anchor" href="#prerequisites"></a> Prerequisites</h1>
+<p>I assume you know how to use gdb to debug programs, and the tools we need include:</p>
+<ul>
+<li>kvm-virtual machine <a href="https://help.ubuntu.com/community/KVM/Installation" target="_blank" rel="noopener">click here to see how to install kvm virtual machine on ubuntu</a></li>
+<li>gdb</li>
+<li>vscode (optional)</li>
+</ul>
+<h1 id="debugging"><a class="markdownIt-Anchor" href="#debugging"></a> Debugging</h1>
+<p>Some tutorials may use the debug extension of ubuntu, but it’s not necessary if you compile the kernel yourself. The key is to disable the aslr of the kernel and enable the debugging of qemu.</p>
+<h2 id="compiling-your-kernel"><a class="markdownIt-Anchor" href="#compiling-your-kernel"></a> compiling your kernel</h2>
+<p><strong>Notion 1:</strong> There are lots of tutorials about how to compile the kernel and install it. Just don’t forget to enable the debug info when you are setting <code>.config</code> file. Besides, you need to put the same kernel source code on both guest and host machine.</p>
+<p><strong>Notion 2:</strong> Remember to compile the kernel in the guest virtual machine and don’t forget to send a vmlinux binary file (in <code>/your/linux_source_code_guest</code> directory) to the host machine (send to <code>/your/linux_source_code_host</code> directory).</p>
+<p><strong>Notion 3:</strong> When compiling the code, the finalized kernel may be too large for <code>/boot</code> directory, then you need to strip some of the drivers to reduce the installed kernel size. Please see <a href="https://unix.stackexchange.com/questions/270390/how-to-reduce-the-size-of-the-initrd-when-compiling-your-kernel" target="_blank" rel="noopener">this</a>.</p>
+<h2 id="enable-debugging-of-qemu"><a class="markdownIt-Anchor" href="#enable-debugging-of-qemu"></a> enable debugging of qemu</h2>
+<p>I referenced <a href="https://mhcerri.github.io/posts/debugging-the-ubuntu-kernel-with-gdb-and-qemu/" target="_blank" rel="noopener">this blog</a> to enable the debugging of qemu, but I changed the debugging port to 12345. You may change the port as you like because if multiple virtual machines have “-s” option, you can only start one of them.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh edit &quot;$GUESTNAME&quot;</span><br></pre></td></tr></table></figure>
+<p>Replace the first line:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;domain type&#x3D;&#39;kvm&#39;&gt;</span><br></pre></td></tr></table></figure>
+<p>with:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;domain type&#x3D;&#39;kvm&#39; xmlns:qemu&#x3D;&#39;http:&#x2F;&#x2F;libvirt.org&#x2F;schemas&#x2F;domain&#x2F;qemu&#x2F;1.0&#39;&gt;</span><br><span class="line">    &lt;qemu:commandline&gt;</span><br><span class="line">        &lt;qemu:arg value&#x3D;&#39;-gdb&#39;&#x2F;&gt;</span><br><span class="line">        &lt;qemu:arg value&#x3D;&#39;tcp::12345&#39;&#x2F;&gt;</span><br><span class="line">    &lt;&#x2F;qemu:commandline&gt;</span><br></pre></td></tr></table></figure>
+<h2 id="disable-the-kernel-aslr"><a class="markdownIt-Anchor" href="#disable-the-kernel-aslr"></a> disable the kernel aslr</h2>
+<p>You must turn it off, otherwise gdb cannot find your code. Most of the tutorials use qemu and mount an initramfs, so they just add a nokaslr in the command. When I need to debug the whole system, I need a complete virtual machine. To disable kernel aslr, I insert this in <code>/etc/default/grub</code>, you may check <a href="https://unix.stackexchange.com/questions/397939/turning-off-kaslr-to-debug-linux-kernel-using-qemu-and-gdb" target="_blank" rel="noopener">this</a> for more details:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT&#x3D;&quot;quiet nokaslr&quot;</span><br></pre></td></tr></table></figure>
+<p>after that, execute</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo update-grub</span><br></pre></td></tr></table></figure>
+<p>and reboot your virtual machine</p>
+<h2 id="debugging-your-kernel"><a class="markdownIt-Anchor" href="#debugging-your-kernel"></a> debugging your kernel</h2>
+<p>Now use <code>gdb -tui /your/linux_source_code_host/vmlinux</code> to start debugging. When gdb starts, you need to use <code>target remote :12345</code> to connect to the guest machine. Here 12345 is the port you defined in kvm mentioned above. Then you could set break points so that the kernel would pause as you like.</p>
+<p>The notion is that you could only pause at the code that you set as built-in when you compile the kernel. Before the compilation, you need to run make menuconfig and for each part you may choose <code>[ ]</code>, <code>[*]</code> or <code>[M]</code>. You could set break points when the corresponding code is set as <code>[*]</code>. To debug the modules, you need to do the following jobs.</p>
+<h2 id="debugging-your-module"><a class="markdownIt-Anchor" href="#debugging-your-module"></a> debugging your module</h2>
+<p>First of all, compile your module, which is located in <code>/home/ubuntu_guest/module_path</code>. At the same time, send your module code to the host machine, which may be put at <code>/home/ubuntu_host/module_path</code>.</p>
+<p>Since the module is not with the kernel, you need to tell where the module is loaded. After you install your module with <code>insmod</code> or <code>modprobe</code> in the guest virtual machine (<strong>Debugged modules must be installed first!</strong>), check the corresponding address (in guest machine, rather than host machine) by</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat &#x2F;sys&#x2F;module&#x2F;module_name&#x2F;sections&#x2F;.text</span><br></pre></td></tr></table></figure>
+<!-- cat /sys/module/module_name/sections/.data
+cat /sys/module/module_name/sections/.bss -->
+<p>Don’t forget to replace “module_name” with the name of your module, and you will get the <code>.text</code> address. You may get addresses like <code>0xffffffffc079c000</code> for <code>.text</code>.</p>
+<!-- ,   `0xffffffffc07ab000` for `.data` and `0xffffffffc07ab480` for `.bss`.  -->
+<p>Then send the compiled kernel module to your host machine (maybe named  <code>/home/ubuntu_host/module_path/my_module.ko</code>). Use gdb to debug the kernel as mentioned above.</p>
+<p>When gdb starts, use (on host machine):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">add-symbol-file &#x2F;home&#x2F;ubuntu_host&#x2F;module_path&#x2F;module.ko 0xffffffffc079c000</span><br></pre></td></tr></table></figure>
+ <!-- -s .data 0xffffffffc07ab000 -s .bss 0xffffffffc07ab480 -->
+<p>to instruct gdb to load the binary file on host machine and the corresponding loaded address on guest machine. You may also need to tell the corresponding directory on host since it’s comiled on the guest machine.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set substitute-path &#x2F;home&#x2F;ubuntu_guest&#x2F;module_path &#x2F;home&#x2F;ubuntu_host&#x2F;module_path</span><br></pre></td></tr></table></figure>
+<p>Now you can set break points on your module files.</p>
+<h1 id="setting-up-ide-environment-in-vscode-optional"><a class="markdownIt-Anchor" href="#setting-up-ide-environment-in-vscode-optional"></a> Setting up ide environment in vscode (optional)</h1>
+<p>With the gui interface of vscode, debugging is less painful. First of all, setting up the launch.json, and remember to replace your debugging port (mentioned above). This launch.json is on the linux directory on the most machine, and don’t forget to copy the vmlinux file from the guest.</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="comment">// Use IntelliSense to learn about possible attributes.</span></span><br><span class="line">    <span class="comment">// Hover to view descriptions of existing attributes.</span></span><br><span class="line">    <span class="comment">// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387</span></span><br><span class="line">    <span class="attr">"version"</span>: <span class="string">"0.2.0"</span>,</span><br><span class="line">    <span class="attr">"configurations"</span>: [</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="attr">"name"</span>: <span class="string">"kernel-debug"</span>,</span><br><span class="line">            <span class="attr">"type"</span>: <span class="string">"cppdbg"</span>,</span><br><span class="line">            <span class="attr">"request"</span>: <span class="string">"launch"</span>,</span><br><span class="line">            <span class="attr">"miDebuggerServerAddress"</span>: <span class="string">"127.0.0.1:12345"</span>,</span><br><span class="line">            <span class="attr">"program"</span>: <span class="string">"$&#123;workspaceFolder&#125;/vmlinux"</span>,</span><br><span class="line">            <span class="attr">"stopAtEntry"</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="attr">"cwd"</span>: <span class="string">"$&#123;workspaceFolder&#125;"</span>,</span><br><span class="line">            <span class="attr">"MIMode"</span>: <span class="string">"gdb"</span>,</span><br><span class="line">        &#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Now start the guest virtual machine. If you just tap <code>F5</code>, you starts to debug the kernel, but without modules.</p>
+<p>Write a gdb script to tell the address of the kernel module</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">set substitute-path /home/ubuntu_guest/module_path /home/ubuntu_host/module_path</span><br><span class="line">add-symbol-file /home/ubuntu_host/module_path/module.ko 0xffffffffc079c000</span><br></pre></td></tr></table></figure>
+ <!-- -s .data 0xffffffffc07ab000 -s .bss 0xffffffffc07ab480 -->
+<p>Load the kernel module as mentioned above by typing:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-exec source gdb_script</span><br></pre></td></tr></table></figure>
+<p>in the debug console of vscode.</p>
+<p><strong>Now everything is ready and enjoy it!</strong></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/05/03/lazyCode/" rel="prev" title="Passing member names to functions">
+      <i class="fa fa-chevron-left"></i> Passing member names to functions
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/07/how-to-customize-gdb-breakpoints/" rel="next" title="How to customize GDB breakpoints">
+      How to customize GDB breakpoints <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#introduction"><span class="nav-number">1.</span> <span class="nav-text"> Introduction</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#prerequisites"><span class="nav-number">2.</span> <span class="nav-text"> Prerequisites</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#debugging"><span class="nav-number">3.</span> <span class="nav-text"> Debugging</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#compiling-your-kernel"><span class="nav-number">3.1.</span> <span class="nav-text"> compiling your kernel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#enable-debugging-of-qemu"><span class="nav-number">3.2.</span> <span class="nav-text"> enable debugging of qemu</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#disable-the-kernel-aslr"><span class="nav-number">3.3.</span> <span class="nav-text"> disable the kernel aslr</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#debugging-your-kernel"><span class="nav-number">3.4.</span> <span class="nav-text"> debugging your kernel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#debugging-your-module"><span class="nav-number">3.5.</span> <span class="nav-text"> debugging your module</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#setting-up-ide-environment-in-vscode-optional"><span class="nav-number">4.</span> <span class="nav-text"> Setting up ide environment in vscode (optional)</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Lingfeng Xiang</p>
+  <div class="site-description" itemprop="description">PhD student at UTA</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lingfeng Xiang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.1
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.7.1
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
